@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+
+  http:  # Single HTTP instance on standard port
+    image: nginx:alpine
+    ports:
+      - "80:80"          # → standard HTTP
+    restart: unless-stopped
+
+  https:  # Single HTTPS on standard port (self-signed cert, nginx defaults)
+    image: nginx:alpine
+    ports:
+      - "443:443"        # → standard HTTPS
+    restart: unless-stopped
+
+  ssh:
+    image: linuxserver/openssh-server:latest
+    ports:
+      - "22:22"          # → standard SSH
+    environment:
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=testing123
+      - USER_NAME=testuser
+    restart: unless-stopped
+
+  ftp:
+    image: stilliard/pure-ftpd:latest
+    ports:
+      - "21:21"          # → standard FTP control
+      - "20:20"          # → FTP data (active mode; passive handled dynamically)
+      # Passive range: still needed for passive mode transfers, but we can use a standard-ish range
+      # Many real FTP servers use 50000-51000 or similar; we'll keep small for testing
+      - "50000-50009:50000-50009"
+    environment:
+      - PUBLICHOST=localhost
+      - FTP_USER_NAME=ftpuser
+      - FTP_USER_PASS=ftppass
+      - FTP_USER_HOME=/home/ftpuser
+      # No ADDED_FLAGS to avoid conflicts
+    restart: unless-stopped
+
+  smtp:
+    image: namshi/smtp:latest
+    ports:
+      - "25:25"          # → standard SMTP
+    restart: unless-stopped
+
+  # Optional: Redis on standard port (uncomment if you want it)
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+
+  # Optional: MySQL on standard (if you want DB testing; avoids your native Postgres)
+  # mysql:
+  #   image: mysql:8.0
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpass
+  #   restart: unless-stopped
