@@ -9,7 +9,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"github.com/google/gopacket/routing"
 )
 
 type scanner struct {
@@ -25,14 +24,57 @@ type scanner struct {
 	timeout      time.Duration
 }
 
-func newScanner(targetIP string, targetPorts []int, sourcePort int32, router routing.Router, timeout time.Duration) (*scanner, error) {
-	destIP := net.ParseIP(targetIP)
-	if destIP == nil {
-		return nil, fmt.Errorf("failed to parse destination IP '%s' for scanner", targetIP)
-	}
-	iface, gw, src, err := router.Route(destIP)
+func getInterfaceAndSrcIP(dst net.IP) (*net.Interface, net.IP, error) {
+	conn, err := net.Dial("udp", dst.String()+":53")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get route to target, couldn not establish parameters for scanner: %w", err)
+		return nil, nil, err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	srcIP := localAddr.IP
+
+	iface, err := interfaceByIP(srcIP)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return iface, srcIP, nil
+}
+
+func interfaceByIP(ip net.IP) (*net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			if ipNet.IP.Equal(ip) {
+				return &iface, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("no interface owns IP %s", ip)
+}
+
+func newScanner(targetIP net.IP, targetPorts []int, sourcePort int32, timeout time.Duration) (*scanner, error) {
+	iface, src, err := getInterfaceAndSrcIP(targetIP)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get interface and source IP: %w", err)
 	}
 
 	var ports []layers.TCPPort
@@ -50,10 +92,9 @@ func newScanner(targetIP string, targetPorts []int, sourcePort int32, router rou
 	return &scanner{
 		netInterface: iface,
 		sourceIP:     src,
-		targetIP:     destIP,
+		targetIP:     targetIP,
 		sourcePort:   srcPort,
 		targetPorts:  ports,
-		gateway:      gw,
 		handle:       handle,
 		timeout:      timeout,
 	}, nil
@@ -70,7 +111,7 @@ func (s *scanner) send(l ...gopacket.SerializableLayer) error {
 	return s.handle.WritePacketData(s.buf.Bytes())
 }
 
-func (s *scanner) scan() {
+func (s *scanner) scan() error {
 	ip4 := layers.IPv4{
 		SrcIP:    s.sourceIP,
 		DstIP:    s.targetIP,
@@ -96,6 +137,7 @@ func (s *scanner) scan() {
 
 		if time.Since(start) > s.timeout {
 			log.Printf("timed out for %v", s.targetIP)
+			return nil
 		}
 
 		data, _, err := s.handle.ReadPacketData()
@@ -111,6 +153,7 @@ func (s *scanner) scan() {
 		filterPacket(packet, ipFlow)
 
 	}
+	return nil
 }
 
 func filterPacket(packet gopacket.Packet, ipFlow gopacket.Flow) {
