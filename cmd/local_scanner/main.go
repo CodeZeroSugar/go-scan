@@ -8,7 +8,7 @@ import (
 
 const (
 	LoopBack = "127.0.0.1"
-	Ports    = 9000
+	Ports    = 20000
 )
 
 func main() {
@@ -36,10 +36,8 @@ func main() {
 
 		conn, err := net.DialTCP("tcp", nil, &tcpAddrDst)
 		if err != nil {
-			if e, ok := err.(net.Error); ok {
-				log.Printf("connection attempt for port %v timed out: %v", tcpAddrDst.Port, e)
-			} else {
-				log.Printf("failed to get tcp connection: %s", err)
+			if _, ok := err.(net.Error); ok {
+				// log.Printf("connection attempt for port %v failed: %v", tcpAddrDst.Port, e)
 			}
 			continue
 		}
