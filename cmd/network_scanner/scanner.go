@@ -128,7 +128,7 @@ func newScanner(targetIP net.IP, targetPorts []int, sourcePort int32, timeout ti
 
 	srcPort := layers.TCPPort(sourcePort)
 
-	handle, err := pcap.OpenLive(iface.Name, 262144, true, time.Second*5)
+	handle, err := pcap.OpenLive(iface.Name, 262144, true, time.Second*15)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handle for scanner: %w", err)
 	}
