@@ -6,13 +6,14 @@ import (
 	"strings"
 )
 
+//go:generate stringer -type=PortState
 type PortState int
 
 const (
-	PortStateOpen        = 0
-	PortStateClosed      = 1
-	PortStateFiltered    = 2
-	PortStateUnreachable = 3
+	PortStateOpen PortState = iota
+	PortStateClosed
+	PortStateFiltered
+	PortStateUnreachable
 )
 
 type PortScanTask struct {
