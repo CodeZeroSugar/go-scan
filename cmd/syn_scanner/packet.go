@@ -63,7 +63,7 @@ func (t *TCPSegment) setDataOffsetResFlags() {
 	t.DataOffsetResFlags = (t.DataOffset << 12) + (t.Reserved << 9) + (t.NS << 8) + (t.CWR << 7) + (t.ECE << 6) + (t.URG << 5) + (t.ACK << 4) + (t.PSH << 3) + (t.RST << 2) + (t.SYN << 1) + t.FIN
 }
 
-func (p *Packet) CalcChecksum(msg []byte) uint16 {
+func CalcChecksum(msg []byte) uint16 {
 	var s uint32
 	for i := 0; i < len(msg); i += 2 {
 		s += uint32(msg[i])<<8 | uint32(msg[i+1])
@@ -97,6 +97,32 @@ func (p *Packet) GenerateTempTCPHeader() error {
 	}
 	p.TmpTCPHeader = buf.Bytes()
 	return nil
+}
+
+func (p *Packet) GeneratePacket() error {
+	finalIP := new(bytes.Buffer)
+	p.IPSeg.HeaderChecksum = CalcChecksum(p.TmpTCPHeader)
+	binary.Write(finalIP, binary.BigEndian, "!BBHHHBBH4s4s")
+	err := binary.Write(finalIP, binary.BigEndian, p.IPSeg)
+	if err != nil {
+		return fmt.Errorf("failed to write final IP header to buffer: %w", err)
+	}
+
+	pseudoHeader := new(bytes.Buffer)
+	err = p.GenerateTempTCPHeader()
+	if err != nil {
+		return fmt.Errorf("failed to generate temp TCP header: %w", err)
+	}
+	binary.Write(pseudoHeader, binary.BigEndian, "!4s4sBBH")
+	binary.Write(pseudoHeader, binary.BigEndian, p.IPSeg.SrcAddr)
+	binary.Write(pseudoHeader, binary.BigEndian, p.IPSeg.DstAddr)
+	binary.Write(pseudoHeader, binary.BigEndian, p.TCPSeg.Checksum)
+	binary.Write(pseudoHeader, binary.BigEndian, p.IPSeg.Protocol)
+	binary.Write(pseudoHeader, binary.BigEndian, len(p.TmpTCPHeader))
+
+	psh := append(pseudoHeader.Bytes(), p.TmpTCPHeader...)
+
+	finalTCP := new(bytes.Buffer)
 }
 
 func NewPacket(srcIP, dstIP string, dstPort int) (*Packet, error) {
