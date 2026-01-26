@@ -11,6 +11,7 @@ import (
 type Packet struct {
 	IPSeg        IPSegment
 	TCPSeg       TCPSegment
+	Destination  net.IP
 	TmpIPHeader  []byte
 	TmpTCPHeader []byte
 	Packet       []byte
@@ -79,8 +80,30 @@ func CalcChecksum(msg []byte) uint16 {
 
 func (p *Packet) GenerateTempIPHeader() error {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, "!BBHHHBBH4s4s")
-	err := binary.Write(buf, binary.BigEndian, p.IPSeg)
+	tmpIPHeader := struct {
+		vIhl      uint8
+		tos       uint8
+		tLength   uint16
+		id        uint16
+		fFO       int
+		ttl       uint8
+		protocol  uint8
+		hChecksum uint16
+		srcAddr   uint32
+		dstAddr   uint32
+	}{
+		vIhl:      p.IPSeg.VIHL,
+		tos:       p.IPSeg.TypeOfService,
+		tLength:   p.IPSeg.TotalLength,
+		id:        p.IPSeg.Identification,
+		fFO:       p.IPSeg.FFO,
+		ttl:       p.IPSeg.TTL,
+		protocol:  p.IPSeg.Protocol,
+		hChecksum: p.IPSeg.HeaderChecksum,
+		srcAddr:   p.IPSeg.SrcAddr,
+		dstAddr:   p.IPSeg.DstAddr,
+	}
+	err := binary.Write(buf, binary.BigEndian, tmpIPHeader)
 	if err != nil {
 		return fmt.Errorf("failed to write temp IP header to buffer: %w", err)
 	}
@@ -90,8 +113,26 @@ func (p *Packet) GenerateTempIPHeader() error {
 
 func (p *Packet) GenerateTempTCPHeader() error {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, "!HHLLHHH")
-	err := binary.Write(buf, binary.BigEndian, p.TCPSeg)
+	tmpTCPHeader := struct {
+		srcPort            uint16
+		dstPort            uint16
+		seqNo              uint32
+		ackNo              uint32
+		dataOffsetResFlags uint8
+		windowSize         uint16
+		checksum           uint16
+		urgPointer         uint16
+	}{
+		srcPort:            p.TCPSeg.SrcPort,
+		dstPort:            p.TCPSeg.DstPort,
+		seqNo:              p.TCPSeg.SeqNumber,
+		ackNo:              p.TCPSeg.AckNumber,
+		dataOffsetResFlags: p.TCPSeg.DataOffsetResFlags,
+		windowSize:         p.TCPSeg.WindowSize,
+		checksum:           p.TCPSeg.Checksum,
+		urgPointer:         p.TCPSeg.UrgPointer,
+	}
+	err := binary.Write(buf, binary.BigEndian, tmpTCPHeader)
 	if err != nil {
 		return fmt.Errorf("failed to write temp TCP header to buffer: %w", err)
 	}
@@ -102,30 +143,113 @@ func (p *Packet) GenerateTempTCPHeader() error {
 func (p *Packet) GeneratePacket() error {
 	finalIP := new(bytes.Buffer)
 	p.IPSeg.HeaderChecksum = CalcChecksum(p.TmpTCPHeader)
-	binary.Write(finalIP, binary.BigEndian, "!BBHHHBBH4s4s")
-	err := binary.Write(finalIP, binary.BigEndian, p.IPSeg)
+	ipHeader := struct {
+		vIhl      uint8
+		tos       uint8
+		tLength   uint16
+		id        uint16
+		fFO       int
+		ttl       uint8
+		protocol  uint8
+		hChecksum uint16
+		srcAddr   uint32
+		dstAddr   uint32
+	}{
+		vIhl:      p.IPSeg.VIHL,
+		tos:       p.IPSeg.TypeOfService,
+		tLength:   p.IPSeg.TotalLength,
+		id:        p.IPSeg.Identification,
+		fFO:       p.IPSeg.FFO,
+		ttl:       p.IPSeg.TTL,
+		protocol:  p.IPSeg.Protocol,
+		hChecksum: p.IPSeg.HeaderChecksum,
+		srcAddr:   p.IPSeg.SrcAddr,
+		dstAddr:   p.IPSeg.DstAddr,
+	}
+	err := binary.Write(finalIP, binary.BigEndian, ipHeader)
 	if err != nil {
 		return fmt.Errorf("failed to write final IP header to buffer: %w", err)
 	}
 
 	pseudoHeader := new(bytes.Buffer)
 	err = p.GenerateTempTCPHeader()
+	psuedo := struct {
+		srcAddr      uint32
+		dstAddr      uint32
+		checksum     uint16
+		protocol     uint8
+		lenTCPHeader int
+	}{
+		srcAddr:      p.IPSeg.SrcAddr,
+		dstAddr:      p.IPSeg.DstAddr,
+		checksum:     p.TCPSeg.Checksum,
+		protocol:     p.IPSeg.Protocol,
+		lenTCPHeader: len(p.TmpTCPHeader),
+	}
 	if err != nil {
 		return fmt.Errorf("failed to generate temp TCP header: %w", err)
 	}
-	binary.Write(pseudoHeader, binary.BigEndian, "!4s4sBBH")
-	binary.Write(pseudoHeader, binary.BigEndian, p.IPSeg.SrcAddr)
-	binary.Write(pseudoHeader, binary.BigEndian, p.IPSeg.DstAddr)
-	binary.Write(pseudoHeader, binary.BigEndian, p.TCPSeg.Checksum)
-	binary.Write(pseudoHeader, binary.BigEndian, p.IPSeg.Protocol)
-	binary.Write(pseudoHeader, binary.BigEndian, len(p.TmpTCPHeader))
+	err = binary.Write(pseudoHeader, binary.BigEndian, psuedo)
+	if err != nil {
+		return fmt.Errorf("failed to write psuedoheader: %w", err)
+	}
 
 	psh := append(pseudoHeader.Bytes(), p.TmpTCPHeader...)
-
 	finalTCP := new(bytes.Buffer)
+	fTCP := struct {
+		srcPort            uint16
+		dstPort            uint16
+		seqNo              uint32
+		ackNo              uint32
+		dataOffsetResFlags uint8
+		windowSize         uint16
+		checksum           uint16
+		urgPointer         uint16
+	}{
+		srcPort:            p.TCPSeg.SrcPort,
+		dstPort:            p.TCPSeg.DstPort,
+		seqNo:              p.TCPSeg.SeqNumber,
+		ackNo:              p.TCPSeg.AckNumber,
+		dataOffsetResFlags: p.TCPSeg.DataOffsetResFlags,
+		windowSize:         p.TCPSeg.WindowSize,
+		checksum:           CalcChecksum(psh),
+		urgPointer:         p.TCPSeg.UrgPointer,
+	}
+	err = binary.Write(finalTCP, binary.BigEndian, fTCP)
+	if err != nil {
+		return fmt.Errorf("failed to write final tcp header %w", err)
+	}
+	pack := append(finalIP.Bytes(), finalTCP.Bytes()...)
+	p.Packet = pack
+
+	return nil
 }
 
-func NewPacket(srcIP, dstIP string, dstPort int) (*Packet, error) {
+func (p *Packet) SendPacket() error {
+	s, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_TCP)
+	if err != nil {
+		return fmt.Errorf("failed to create socket: %w", err)
+	}
+	err = syscall.SetsockoptString(s, syscall.IPPROTO_IP, syscall.IP_HDRINCL, "1")
+	if err != nil {
+		return fmt.Errorf("failed to set socket opt: %w", err)
+	}
+	var dstAddr [4]byte
+	copy(dstAddr[:], p.Destination.To4())
+	to := syscall.SockaddrInet4{
+		Port: int(p.TCPSeg.DstPort),
+		Addr: dstAddr,
+	}
+
+	err = syscall.Sendto(s, p.Packet, p.IPSeg.Flags, &to)
+	if err != nil {
+		return fmt.Errorf("failed to send packet over raw socket: %w", err)
+	}
+
+	return nil
+}
+
+func NewPacket(srcIP, dstIP string, dstPort uint16) (*Packet, error) {
 	srcAddr := net.ParseIP(srcIP)
 	if srcAddr == nil {
 		return nil, fmt.Errorf("failed to parse '%s' to address", srcIP)
@@ -175,28 +299,10 @@ func NewPacket(srcIP, dstIP string, dstPort int) (*Packet, error) {
 	tcp.setDataOffsetResFlags()
 
 	packet := Packet{
-		IPSeg:  ip,
-		TCPSeg: tcp,
-		Buffer: make([]byte, 0),
+		IPSeg:       ip,
+		TCPSeg:      tcp,
+		Destination: dstAddr,
 	}
 
 	return &packet, nil
-}
-
-func (r *RawSocket) Send(p []byte, to syscall.Sockaddr, packet *Packet) error {
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_TCP)
-	if err != nil {
-		return fmt.Errorf("failed to create socket: %w", err)
-	}
-	err = syscall.SetsockoptString(fd, syscall.IPPROTO_IP, syscall.IP_HDRINCL, "1")
-	if err != nil {
-		return fmt.Errorf("failed to set socket opt: %w", err)
-	}
-
-	err = syscall.Sendto(fd, p, packet.TCP.Flags, to)
-	if err != nil {
-		return fmt.Errorf("failed to send packet over raw socket: %w", err)
-	}
-
-	return nil
 }
