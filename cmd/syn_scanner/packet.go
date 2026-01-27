@@ -7,22 +7,32 @@ import (
 	"syscall"
 )
 
-type TCPFlags uint16
+type TCPFlags struct {
+	FIN uint8
+	SYN uint8
+	RST uint8
+	PSH uint8
+	ACK uint8
+	URG uint8
+	ECE uint8
+	CWR uint8
+	NS  uint8
+}
 
-const (
-	tcpFIN TCPFlags = 1 << 0
-	tcpSYN TCPFlags = 1 << 1
-	tcpRST TCPFlags = 1 << 2
-	tcpPSH TCPFlags = 1 << 3
-	tcpACK TCPFlags = 1 << 4
-	tcpURG TCPFlags = 1 << 5
-	tcpECE TCPFlags = 1 << 6
-	tcpCWR TCPFlags = 1 << 7
-	tcpNS  TCPFlags = 1 << 8
-)
+func buildTCPFlags(f TCPFlags) uint16 {
+	return (uint16(f.NS) << 8) |
+		(uint16(f.CWR) << 7) |
+		(uint16(f.ECE) << 6) |
+		(uint16(f.URG) << 5) |
+		(uint16(f.ACK) << 4) |
+		(uint16(f.PSH) << 3) |
+		(uint16(f.RST) << 2) |
+		(uint16(f.SYN) << 1) |
+		uint16(f.FIN)
+}
 
 func packOffsetFlags(offset uint8, flags uint16) uint16 {
-	return uint16(offset)<<12 | (flags & 0x0FFF)
+	return uint16(offset&0xF)<<12 | (flags & 0x01FF)
 }
 
 type Packet struct {
@@ -71,7 +81,7 @@ func CalcChecksum(msg []byte) uint16 {
 	return ^uint16(s)
 }
 
-func buildPsuedoHeader(srcIP, dstIP uint32, tcpSegment []byte) []byte {
+func buildPseudoHeader(srcIP, dstIP uint32, tcpSegment []byte) []byte {
 	psh := make([]byte, 12+len(tcpSegment))
 
 	binary.BigEndian.PutUint32(psh[0:4], srcIP)
@@ -119,14 +129,14 @@ func (t *TCPSegment) Marshal(srcIP, dstIP uint32) []byte {
 	binary.BigEndian.PutUint32(buf[4:8], t.SeqNumber)
 	binary.BigEndian.PutUint32(buf[8:12], t.AckNumber)
 
-	flags := packOffsetFlags(t.DataOffset, uint16(t.Flags))
+	flags := packOffsetFlags(t.DataOffset, buildTCPFlags(t.Flags))
 	binary.BigEndian.PutUint16(buf[12:14], flags)
 
 	binary.BigEndian.PutUint16(buf[14:16], t.WindowSize)
 	binary.BigEndian.PutUint16(buf[16:18], 0)
 	binary.BigEndian.PutUint16(buf[18:20], t.UrgPointer)
 
-	psh := buildPsuedoHeader(srcIP, dstIP, buf)
+	psh := buildPseudoHeader(srcIP, dstIP, buf)
 	csum := CalcChecksum(psh)
 	binary.BigEndian.PutUint16(buf[16:18], csum)
 
@@ -145,7 +155,7 @@ func (p *Packet) SendPacket() error {
 		return fmt.Errorf("failed to create socket: %w", err)
 	}
 	defer syscall.Close(s)
-	err = syscall.SetsockoptString(s, syscall.IPPROTO_IP, syscall.IP_HDRINCL, "1")
+	err = syscall.SetsockoptInt(s, syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1)
 	if err != nil {
 		return fmt.Errorf("failed to set socket opt: %w", err)
 	}
@@ -178,9 +188,9 @@ func NewPacket(srcIP, dstIP string, dstPort uint16) (*Packet, error) {
 		Version:        0x4,
 		IHL:            0x5,
 		TypeOfService:  0x0,
-		TotalLength:    0x0,
-		Identification: 0xabcd,
-		Flags:          0x0,
+		TotalLength:    uint16(40),
+		Identification: 0x1234,
+		Flags:          2,
 		FragmentOffset: 0x0,
 		TTL:            64,
 		Protocol:       syscall.IPPROTO_TCP,
@@ -194,6 +204,7 @@ func NewPacket(srcIP, dstIP string, dstPort uint16) (*Packet, error) {
 		SeqNumber:  0x0,
 		AckNumber:  0x0,
 		DataOffset: 0x5,
+		Flags:      TCPFlags{SYN: 1},
 		WindowSize: 65535,
 		UrgPointer: 0x0,
 	}
