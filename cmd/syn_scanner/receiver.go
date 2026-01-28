@@ -24,7 +24,6 @@ func NewReceiver() (*Receiver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create receiver socket: %w", err)
 	}
-	defer syscall.Close(fd)
 
 	buf := make([]byte, 65535)
 
@@ -35,19 +34,39 @@ func NewReceiver() (*Receiver, error) {
 	return r, nil
 }
 
-func (r *Receiver) Receive() ([]byte, syscall.Sockaddr, error) {
-	n, addr, err := syscall.Recvfrom(r.fd, r.buf, 0)
+func (r *Receiver) Receive(out chan<- TCPEvent) {
+	n, _, err := syscall.Recvfrom(r.fd, r.buf, 0)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to receive bytes from socket: %w", err)
+		return
 	}
 
 	fmt.Println("Bytes received: ", n)
+	fmt.Printf("% x\n", r.buf[:n])
 
-	return r.buf[:n], addr, nil
+	event := ParseTCP(r.buf[:n])
+	out <- event
 }
 
-func ParseTCP(buf []byte) {
+func ParseTCP(buf []byte) TCPEvent {
+	if len(buf) < 20 {
+		return TCPEvent{}
+	}
+
+	version := buf[0] >> 4
+	if version != 4 {
+		return TCPEvent{}
+	}
+
+	protocol := buf[9]
+	if protocol != syscall.IPPROTO_TCP {
+		return TCPEvent{}
+	}
+
 	ihl := (buf[0] & 0x0F) * 4
+	if len(buf) < int(ihl+20) {
+		return TCPEvent{}
+	}
+
 	tcp := buf[ihl:]
 
 	srcIP := binary.BigEndian.Uint32(buf[12:16])
@@ -66,7 +85,7 @@ func ParseTCP(buf []byte) {
 		Flags:   flags,
 	}
 
-	event.Filter()
+	return event
 }
 
 func (t *TCPEvent) Filter() {
