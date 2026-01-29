@@ -143,6 +143,22 @@ func (t *TCPSegment) Marshal(srcIP, dstIP uint32) []byte {
 	return buf
 }
 
+func (t *TCPSegment) BuildRST(seq uint32, ack uint32) TCPSegment {
+	return TCPSegment{
+		SrcPort:    t.SrcPort,
+		DstPort:    t.DstPort,
+		SeqNumber:  seq,
+		AckNumber:  ack,
+		DataOffset: 5,
+		Flags: TCPFlags{
+			RST: 1,
+			ACK: 1,
+		},
+		WindowSize: 0,
+		UrgPointer: 0,
+	}
+}
+
 func (p *Packet) GeneratePacket() {
 	ipBytes := p.IPSeg.Marshal()
 	tcpBytes := p.TCPSeg.Marshal(p.IPSeg.SrcAddr, p.IPSeg.DstAddr)

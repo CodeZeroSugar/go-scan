@@ -6,11 +6,29 @@ import (
 	"syscall"
 )
 
+const (
+	TCP_FIN = 0x01
+	TCP_SYN = 0x02
+	TCP_RST = 0x04
+	TCP_PSH = 0x08
+	TCP_ACK = 0x10
+)
+
+type TCPResult int
+
+const (
+	TCPUnknown TCPResult = iota
+	TCPOpen
+	TCPClosed
+)
+
 type TCPEvent struct {
 	SrcIP   uint32
 	DstIP   uint32
 	SrcPort uint16
 	DstPort uint16
+	Seq     uint32
+	Ack     uint32
 	Flags   uint16
 }
 
@@ -74,31 +92,37 @@ func ParseTCP(buf []byte) TCPEvent {
 
 	srcPort := binary.BigEndian.Uint16(tcp[0:2])
 	dstPort := binary.BigEndian.Uint16(tcp[2:4])
+	seq := binary.BigEndian.Uint32(tcp[4:8])
+	ack := binary.BigEndian.Uint32(tcp[8:12])
 
 	flags := binary.BigEndian.Uint16(tcp[12:14]) & 0x01FF
+
+	fmt.Printf("Flags: SYN=%v ACK=%v RST=%v PSH=%v\n", flags&TCP_SYN != 0, flags&TCP_ACK != 0, flags&TCP_RST != 0, flags&TCP_PSH != 0)
 
 	event := TCPEvent{
 		SrcIP:   srcIP,
 		DstIP:   dstIP,
 		SrcPort: srcPort,
 		DstPort: dstPort,
+		Seq:     seq,
+		Ack:     ack,
 		Flags:   flags,
 	}
 
 	return event
 }
 
-func (t *TCPEvent) Filter() {
+func (t *TCPEvent) Classify() TCPResult {
 	syn := t.Flags&0x002 != 0
 	ack := t.Flags&0x010 != 0
 	rst := t.Flags&0x004 != 0
 
 	switch {
 	case syn && ack:
-		fmt.Println("Port Open (SYN+ACK)")
+		return TCPOpen
 	case rst:
-		fmt.Println("Port Closed (RST)")
+		return TCPClosed
 	default:
-		fmt.Println("Other TCP packet")
+		return TCPUnknown
 	}
 }
