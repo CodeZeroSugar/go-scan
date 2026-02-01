@@ -8,15 +8,15 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[PortStateOpen-0]
-	_ = x[PortStateClosed-1]
-	_ = x[PortStateFiltered-2]
-	_ = x[PortStateUnreachable-3]
+	_ = x[Open-0]
+	_ = x[Closed-1]
+	_ = x[Filtered-2]
+	_ = x[Unreachable-3]
 }
 
-const _PortState_name = "PortStateOpenPortStateClosedPortStateFilteredPortStateUnreachable"
+const _PortState_name = "OpenClosedFilteredUnreachable"
 
-var _PortState_index = [...]uint8{0, 13, 28, 45, 65}
+var _PortState_index = [...]uint8{0, 4, 10, 18, 29}
 
 func (i PortState) String() string {
 	idx := int(i) - 0

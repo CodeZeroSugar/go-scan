@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strconv"
-	"strings"
+	"sort"
 )
 
 const (
-	LoopBack = "127.0.0.1"
-	Ports    = 1023
-	Workers  = 100
+	Workers = 100
 )
 
 func main() {
@@ -22,42 +19,9 @@ func main() {
 		log.Fatalf("failed to parse IP from: %s", params.target)
 	}
 
-	var portLen int
-	var p []int
-
-	switch params.portMode {
-	case single:
-		portLen = 1
-		numStr := params.ports[0]
-		num, err := strconv.Atoi(numStr)
-		if err != nil {
-			log.Fatalf("invalid integer assigned to port: %s", err)
-		}
-		p = append(p, num)
-	case selection:
-		portLen = len(params.ports)
-		for _, n := range params.ports {
-			num, err := strconv.Atoi(n)
-			if err != nil {
-				log.Fatalf("invalid integer assigned to port: %s", err)
-			}
-			p = append(p, num)
-		}
-	case series:
-		splitPorts := strings.Split(params.ports[0], "-")
-		numLow, err := strconv.Atoi(splitPorts[0])
-		if err != nil {
-			log.Fatalf("invalid integer assigned to port: %s", err)
-		}
-		numHigh, err := strconv.Atoi(splitPorts[1])
-		if err != nil {
-			log.Fatalf("invalid integer assigned to port: %s", err)
-		}
-		portLen = numHigh - 1
-		p = append(p, numLow, numHigh)
-
-	default:
-		log.Fatalf("Invalid format for ports")
+	p, portLen, err := parsePortOpts(params)
+	if err != nil {
+		log.Fatalf("%s", err)
 	}
 
 	taskQueue := make(chan PortScanTask)
@@ -88,12 +52,22 @@ func main() {
 	}
 
 	close(taskQueue)
-	fmt.Printf("Scan Results for: %v\n", ip)
+
+	var aggregatedResults []PortScanResults
 	for range portLen {
 		result := <-taskResults
-		if result.State == PortStateOpen {
-			fmt.Printf("Port: %-5d | State: %v | Error: %v\n", result.Port, result.State.String(), result.ErrorInfo)
+		if result.State == Open {
+			aggregatedResults = append(aggregatedResults, result)
 		}
+	}
+
+	sort.Slice(aggregatedResults, func(i, j int) bool {
+		return aggregatedResults[i].Port < aggregatedResults[j].Port
+	})
+
+	fmt.Printf("Scan Results for: %v\n", ip)
+	for _, res := range aggregatedResults {
+		fmt.Printf("Port: %-5d | State: %v\n", res.Port, res.State.String())
 	}
 
 	fmt.Println("Scan complete")

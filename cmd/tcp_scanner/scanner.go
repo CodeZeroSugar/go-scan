@@ -10,10 +10,10 @@ import (
 type PortState int
 
 const (
-	PortStateOpen PortState = iota
-	PortStateClosed
-	PortStateFiltered
-	PortStateUnreachable
+	Open PortState = iota
+	Closed
+	Filtered
+	Unreachable
 )
 
 type PortScanTask struct {
@@ -46,18 +46,18 @@ func scan(taskQueue chan PortScanTask, resultQueue chan PortScanResults) {
 
 		conn, err := net.DialTCP("tcp", nil, &tcpAddrDst)
 		if err == nil {
-			state = PortStateOpen
+			state = Open
 			resultErr = nil
 			conn.Close()
 		} else {
 			if errors.As(err, &netErr) && netErr.Timeout() {
-				state = PortStateFiltered
+				state = Filtered
 				resultErr = netErr
 			} else if strings.Contains(err.Error(), "unreachable") {
-				state = PortStateUnreachable
+				state = Unreachable
 				resultErr = err
 			} else {
-				state = PortStateClosed
+				state = Closed
 				resultErr = err
 			}
 		}
