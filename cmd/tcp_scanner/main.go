@@ -4,20 +4,24 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 )
 
 const (
 	LoopBack = "127.0.0.1"
-	Ports    = 100000
+	Ports    = 1023
 	Workers  = 100
 )
 
 func main() {
-	fmt.Printf("Scanning '%s' ports 1-%d\n", LoopBack, Ports)
+	args := os.Args[1:]
+	target := args[0]
 
-	ip := net.ParseIP(LoopBack)
+	fmt.Printf("Scanning '%s' ports 1-%d\n", target, Ports)
+
+	ip := net.ParseIP(target)
 	if ip == nil {
-		log.Fatalf("failed to parse IP from: %s", LoopBack)
+		log.Fatalf("failed to parse IP from: %s", target)
 	}
 
 	taskQueue := make(chan PortScanTask)
