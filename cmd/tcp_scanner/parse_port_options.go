@@ -37,7 +37,7 @@ func parsePortOpts(params params) ([]int, int, error) {
 		if err != nil {
 			return nil, 0, fmt.Errorf("invalid integer assigned to port: %w", err)
 		}
-		portLen = numHigh - 1
+		portLen = numHigh - numLow
 		p = append(p, numLow, numHigh)
 
 	default:

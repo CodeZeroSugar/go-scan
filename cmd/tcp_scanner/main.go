@@ -5,13 +5,20 @@ import (
 	"log"
 	"net"
 	"sort"
+	"time"
 )
 
 const (
 	Workers = 100
+	Version = "1.0.0-alpha"
+	URL     = "https://github.com/CodeZeroSugar/go-scan"
 )
 
 func main() {
+	now := time.Now()
+	formattedTime := now.Format("2006-01-02 15:04:05")
+	fmt.Printf("Starting GoScan %s ( %s ) at %s\n", Version, URL, formattedTime)
+
 	params := handleFlags()
 
 	ip := net.ParseIP(params.target)
@@ -69,6 +76,6 @@ func main() {
 	for _, res := range aggregatedResults {
 		fmt.Printf("Port: %-5d | State: %v\n", res.Port, res.State.String())
 	}
-
-	fmt.Println("Scan complete")
+	d := time.Since(now)
+	fmt.Printf("GoScan done: %d ports scanned in %.2f seconds\n", portLen, d.Seconds())
 }
