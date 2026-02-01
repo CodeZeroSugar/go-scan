@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	Workers = 100
 	Version = "1.0.0-alpha"
 	URL     = "https://github.com/CodeZeroSugar/go-scan"
+	Workers = 100
 )
 
 func main() {
@@ -61,10 +61,13 @@ func main() {
 	close(taskQueue)
 
 	var aggregatedResults []PortScanResults
+	var openPorts []int
+
 	for range portLen {
 		result := <-taskResults
 		if result.State == Open {
 			aggregatedResults = append(aggregatedResults, result)
+			openPorts = append(openPorts, result.Port)
 		}
 	}
 
