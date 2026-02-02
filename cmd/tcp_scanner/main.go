@@ -6,6 +6,9 @@ import (
 	"net"
 	"sort"
 	"time"
+
+	"github.com/CodeZeroSugar/go-scan/internal/paths"
+	"github.com/CodeZeroSugar/go-scan/internal/stats"
 )
 
 const (
@@ -69,6 +72,14 @@ func main() {
 			aggregatedResults = append(aggregatedResults, result)
 			openPorts = append(openPorts, result.Port)
 		}
+	}
+
+	statPath, err := paths.StatsPath()
+	if err != nil {
+		log.Printf("failed to validate path to stats file: %s", err)
+	}
+	if err = stats.UpdateStats(openPorts, statPath); err != nil {
+		log.Printf("failed to update stats file: %s", err)
 	}
 
 	sort.Slice(aggregatedResults, func(i, j int) bool {
