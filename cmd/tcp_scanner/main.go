@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -22,7 +23,21 @@ func main() {
 	formattedTime := now.Format("2006-01-02 15:04:05")
 	fmt.Printf("Starting GoScan %s ( %s ) at %s\n", Version, URL, formattedTime)
 
+	statPath, err := paths.StatsPath()
+	if err != nil {
+		log.Printf("failed to validate path to stats file: %s", err)
+	}
+
 	params := handleFlags()
+
+	if params.stats {
+		args := flag.Args()
+		err = handleStats(args, statPath)
+		if err != nil {
+			log.Printf("something went wrong reporting stats: %s", err)
+		}
+		return
+	}
 
 	ip := net.ParseIP(params.target)
 	if ip == nil {
@@ -74,10 +89,6 @@ func main() {
 		}
 	}
 
-	statPath, err := paths.StatsPath()
-	if err != nil {
-		log.Printf("failed to validate path to stats file: %s", err)
-	}
 	if err = stats.UpdateStats(openPorts, statPath); err != nil {
 		log.Printf("failed to update stats file: %s", err)
 	}
