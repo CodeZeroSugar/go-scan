@@ -1,59 +1,64 @@
 package icmpscanner
 
 import (
-	"fmt"
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseRange(t *testing.T) {
-	type testOptions struct {
-		input string
-		start net.IP
-		end   net.IP
-	}
+	// Test: Valid single IP Address
+	ip := "192.168.0.25"
+	start, end, err := ParseIPRange(ip)
+	require.NoError(t, err)
+	require.NotNil(t, ip)
+	assert.Equal(t, net.IP(nil), start)
+	assert.Equal(t, net.ParseIP(ip), end)
 
-	var tests []testOptions
-	test1 := testOptions{
-		input: "192.168.0.25",
-		start: nil,
-		end:   net.ParseIP("192.168.0.25"),
-	}
-	test2 := testOptions{
-		input: "192.168.0.1-192.168.0.255",
-		start: net.ParseIP("192.168.0.1"),
-		end:   net.ParseIP("192.168.0.255"),
-	}
-	test3 := testOptions{
-		input: "192.168.0.2-",
-		start: nil,
-		end:   net.ParseIP("192.168.0.2"),
-	}
-	test4 := testOptions{
-		input: "192.168.0.100-192.168.0.50",
-		start: nil,
-		end:   nil,
-	}
-	test5 := testOptions{
-		input: "notandipaddress",
-		start: nil,
-		end:   nil,
-	}
-	test6 := testOptions{
-		input: "192.168.1.1-abc",
-		start: nil,
-		end:   nil,
-	}
-	tests = append(tests, test1, test2, test3, test4, test5, test6)
+	// Test: Valid IP range, two full addresses
+	ip = "192.168.0.10-192.168.0.20"
+	start, end, err = ParseIPRange(ip)
+	require.NoError(t, err)
+	require.NotNil(t, ip)
+	assert.Equal(t, net.ParseIP("192.168.0.10"), start)
+	assert.Equal(t, net.ParseIP("192.168.0.20"), end)
 
-	for _, tt := range tests {
-		s, e, err := ParseIPRange(tt.input)
-		if err != nil {
-			fmt.Println(err)
-		}
+	// Test: Valid IP and hyphen
+	ip = "192.168.0.25-"
+	start, end, err = ParseIPRange(ip)
+	require.NoError(t, err)
+	require.NotNil(t, ip)
+	assert.Equal(t, net.IP(nil), start)
+	assert.Equal(t, net.ParseIP("192.168.0.25"), end)
 
-		if s.String() != tt.start.String() || e.String() != tt.end.String() {
-			t.Errorf("Start expected: %v Start Got: %v\nEnd expected: %v End Got: %v", s, tt.start, e, tt.end)
-		}
-	}
+	// Test: Valid IP range, one full other last octet
+	ip = "192.168.0.25-192.168.0.60"
+	start, end, err = ParseIPRange(ip)
+	require.NoError(t, err)
+	require.NotNil(t, ip)
+	assert.Equal(t, net.ParseIP("192.168.0.25"), start)
+	assert.Equal(t, net.ParseIP("192.168.0.60"), end)
+
+	// Test: Invalid IP
+	ip = "192.168.1223.23"
+	start, end, err = ParseIPRange(ip)
+	require.Error(t, err)
+	assert.Equal(t, net.IP(nil), start)
+	assert.Equal(t, net.IP(nil), end)
+
+	// Test: Invalid order
+	ip = "192.168.0.204-192.168.0.123"
+	start, end, err = ParseIPRange(ip)
+	require.Error(t, err)
+	assert.Equal(t, net.IP(nil), start)
+	assert.Equal(t, net.IP(nil), end)
+
+	// Test: Invalid order, one full and last octet
+	ip = "192.168.0.204-123"
+	start, end, err = ParseIPRange(ip)
+	require.Error(t, err)
+	assert.Equal(t, net.IP(nil), start)
+	assert.Equal(t, net.IP(nil), end)
 }
