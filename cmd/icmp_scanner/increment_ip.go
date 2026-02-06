@@ -1,16 +1,25 @@
 package icmpscanner
 
-func incrementIP(current []byte) bool {
-	if len(current) != 4 {
-		return false
+import (
+	"fmt"
+	"net"
+)
+
+func incrementIP(current net.IP) (net.IP, error) {
+	currentBytes := current.To4()
+	if len(currentBytes) != 4 {
+		return nil, fmt.Errorf("invalid IP address, cannot increment")
 	}
 
+	bytesCopy := make([]byte, 4)
+	copy(bytesCopy, currentBytes)
+
 	for i := 3; i >= 0; i-- {
-		if current[i] < 255 {
-			current[i]++
-			return true
+		if bytesCopy[i] < 255 {
+			bytesCopy[i]++
+			return net.IP(bytesCopy), nil
 		}
-		current[i] = 0
+		bytesCopy[i] = 0
 	}
-	return false
+	return nil, fmt.Errorf("IP overflow")
 }

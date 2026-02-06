@@ -5,25 +5,18 @@ import (
 	"net"
 )
 
-func GenerateIPRange(start, end net.IP) <-chan net.IP {
-	ch := make(chan net.IP, 128)
-	go func() {
-		defer close(ch)
-		start4 := start.To4()
-		end4 := end.To4()
-
-		if start4 == nil || end4 == nil {
-			return
+func GenerateIPRange(start, end net.IP) ([]net.IP, error) {
+	var current net.IP
+	var ipRange []net.IP
+	current = start
+	for bytes.Compare(current.To4(), end.To4()) <= 0 {
+		ipRange = append(ipRange, current)
+		result, err := incrementIP(current)
+		if err != nil {
+			return nil, err
 		}
+		current = result
+	}
 
-		current := make([]byte, 4)
-		copy(current, start4)
-		for bytes.Compare(current, end4) <= 0 {
-			ch <- net.IP(current[:])
-			if !incrementIP(current) {
-				break
-			}
-		}
-	}()
-	return ch
+	return ipRange, nil
 }

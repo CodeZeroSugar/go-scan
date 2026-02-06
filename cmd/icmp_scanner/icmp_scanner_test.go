@@ -47,6 +47,14 @@ func TestGenerateIPRange(t *testing.T) {
 			wantFirst: "172.16.1.100",
 			wantLast:  "172.16.1.100",
 		},
+		{
+			name:      "very Large Network",
+			startStr:  "10.0.0.0",
+			endStr:    "10.255.255.255",
+			wantCount: 16777216,
+			wantFirst: "10.0.0.0",
+			wantLast:  "10.255.255.255",
+		},
 	}
 
 	for _, tt := range tests {
@@ -57,23 +65,21 @@ func TestGenerateIPRange(t *testing.T) {
 				t.Fatalf("failed to parse IPs: %s or %s", tt.startStr, tt.endStr)
 			}
 
-			ch := GenerateIPRange(start, end) // your function
-
-			var got []net.IP
-			for ip := range ch {
-				got = append(got, ip)
+			ipRange, err := GenerateIPRange(start, end) // your function
+			if err != nil {
+				t.Errorf("failed occured during IP range generation: %s", err)
 			}
 
-			if len(got) != tt.wantCount {
-				t.Errorf("wrong count: got %d, want %d", len(got), tt.wantCount)
+			if len(ipRange) != tt.wantCount {
+				t.Errorf("wrong count: got %d, want %d", len(ipRange), tt.wantCount)
 			}
 
-			if len(got) > 0 {
-				if got[0].String() != tt.wantFirst {
-					t.Errorf("first IP wrong: got %s, want %s", got[0], tt.wantFirst)
+			if len(ipRange) > 0 {
+				if ipRange[0].String() != tt.wantFirst {
+					t.Errorf("first IP wrong: got %s, want %s", ipRange[0], tt.wantFirst)
 				}
-				if got[len(got)-1].String() != tt.wantLast {
-					t.Errorf("last IP wrong: got %s, want %s", got[len(got)-1], tt.wantLast)
+				if ipRange[len(ipRange)-1].String() != tt.wantLast {
+					t.Errorf("last IP wrong: got %s, want %s", ipRange[len(ipRange)-1], tt.wantLast)
 				}
 			}
 

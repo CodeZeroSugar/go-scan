@@ -61,9 +61,4 @@ func TestParseRange(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, net.IP(nil), start)
 	assert.Equal(t, net.IP(nil), end)
-
-	// Test: 4 byte IP representation
-	netIP := net.ParseIP("192.168.0.5")
-	b := netIP.To4()
-	incrementIP(b)
 }
