@@ -61,4 +61,68 @@ func TestParseRange(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, net.IP(nil), start)
 	assert.Equal(t, net.IP(nil), end)
+
+	// Test: Full test - range
+	ip = "192.168.0.25-192.168.0.60"
+	scanRange, err := ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, net.ParseIP("192.168.0.25").String(), scanRange[0].String())
+	assert.Equal(t, net.ParseIP("192.168.0.60").String(), scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 36, len(scanRange))
+
+	// Test: Full test - 2 ranges separated by commas
+	ip = "192.168.0.5-192.168.0.10, 192.168.0.20-192.168.0.30"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, net.ParseIP("192.168.0.5").String(), scanRange[0].String())
+	assert.Equal(t, net.ParseIP("192.168.0.30").String(), scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 17, len(scanRange))
+
+	// Test: Full test - 2 ranges, separated by commas, hyphen format with only last octet
+	ip = "192.168.0.15-25, 192.168.0.100-200"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, "192.168.0.15", scanRange[0].String())
+	assert.Equal(t, "192.168.0.200", scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 112, len(scanRange))
+
+	// Test: Full test - CIDR, single range
+	ip = "192.168.0.0/24"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, "192.168.0.0", scanRange[0].String())
+	assert.Equal(t, "192.168.0.255", scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 256, len(scanRange))
+
+	// Test: Full test - CIDR, multiple ranges separated by commas
+	ip = "192.168.0.0/24, 192.168.1.0/24"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, "192.168.0.0", scanRange[0].String())
+	assert.Equal(t, "192.168.1.255", scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 512, len(scanRange))
+
+	// Test: Full test - single ip
+	ip = "192.168.0.25"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, net.ParseIP("192.168.0.25").String(), scanRange[0].String())
+	assert.Equal(t, net.ParseIP("192.168.0.25").String(), scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 1, len(scanRange))
+
+	// Test: Full test - single ips separated by commas
+	ip = "192.168.0.25, 192.168.0.38, 192.168.0.55, 192.168.1.211"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, net.ParseIP("192.168.0.25").String(), scanRange[0].String())
+	assert.Equal(t, net.ParseIP("192.168.1.211").String(), scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 4, len(scanRange))
+
+	// Test: Full test - combination
+	ip = "192.168.0.10-192.168.0.20, 192.168.1.0/24, 192.168.2.20-30, 192.168.2.52"
+	scanRange, err = ParseTargets(ip)
+	require.NoError(t, err)
+	assert.Equal(t, "192.168.0.10", scanRange[0].String())
+	assert.Equal(t, "192.168.2.52", scanRange[len(scanRange)-1].String())
+	assert.Equal(t, 279, len(scanRange))
 }
