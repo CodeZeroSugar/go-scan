@@ -10,9 +10,7 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-const testIP = "192.168.0.168"
-
-func ping(ipAddr string) error {
+func ping(ipAddr net.IP) error {
 	c, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
 		return fmt.Errorf("failed to establish icmp packet connection: %w", err)
@@ -31,7 +29,7 @@ func ping(ipAddr string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal message bytes: %w", err)
 	}
-	if _, err := c.WriteTo(wb, &net.UDPAddr{IP: net.ParseIP(ipAddr), Zone: "eth0"}); err != nil {
+	if _, err := c.WriteTo(wb, &net.UDPAddr{IP: ipAddr, Zone: "eth0"}); err != nil {
 		return fmt.Errorf("failed to write bytes for icmp: %w", err)
 	}
 
