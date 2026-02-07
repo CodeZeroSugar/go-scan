@@ -10,10 +10,10 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-func ping(ipAddr net.IP) error {
+func Ping(ipAddr net.IP) (bool, error) {
 	c, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
-		return fmt.Errorf("failed to establish icmp packet connection: %w", err)
+		return false, fmt.Errorf("failed to establish icmp packet connection: %w", err)
 	}
 	defer c.Close()
 
@@ -27,26 +27,26 @@ func ping(ipAddr net.IP) error {
 
 	wb, err := wm.Marshal(nil)
 	if err != nil {
-		return fmt.Errorf("failed to marshal message bytes: %w", err)
+		return false, fmt.Errorf("failed to marshal message bytes: %w", err)
 	}
 	if _, err := c.WriteTo(wb, &net.UDPAddr{IP: ipAddr, Zone: "eth0"}); err != nil {
-		return fmt.Errorf("failed to write bytes for icmp: %w", err)
+		return false, fmt.Errorf("failed to write bytes for icmp: %w", err)
 	}
 
 	rb := make([]byte, 1500)
 	n, peer, err := c.ReadFrom(rb)
 	if err != nil {
-		return fmt.Errorf("failed to read bytes returned from icmp: %w", err)
+		return false, fmt.Errorf("failed to read bytes returned from icmp: %w", err)
 	}
 	rm, err := icmp.ParseMessage(ipv4.ICMPTypeEcho.Protocol(), rb[:n])
 	if err != nil {
-		return fmt.Errorf("failed to parse icmp return message: %w", err)
+		return false, fmt.Errorf("failed to parse icmp return message: %w", err)
 	}
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply:
 		fmt.Printf("got reflection from %v", peer)
 	default:
-		return fmt.Errorf("got %+v; want echo reply", rm)
+		return false, fmt.Errorf("got %+v; want echo reply", rm)
 	}
-	return nil
+	return true, nil
 }

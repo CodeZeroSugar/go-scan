@@ -1,4 +1,4 @@
-package main
+package tcpscanner
 
 import (
 	"fmt"
@@ -6,29 +6,44 @@ import (
 	"strings"
 )
 
-func parsePortOpts(params params) ([]int, int, error) {
+type Params struct {
+	Target   string
+	Ports    []string
+	PortMode PortMode
+	Stats    bool
+}
+
+type PortMode int
+
+const (
+	Single PortMode = iota
+	Selection
+	Series
+)
+
+func ParsePortOpts(params Params) ([]int, int, error) {
 	var portLen int
 	var p []int
-	switch params.portMode {
-	case single:
+	switch params.PortMode {
+	case Single:
 		portLen = 1
-		numStr := params.ports[0]
+		numStr := params.Ports[0]
 		num, err := strconv.Atoi(numStr)
 		if err != nil {
 			return nil, 0, fmt.Errorf("invalid integer assigned to port: %w", err)
 		}
 		p = append(p, num)
-	case selection:
-		portLen = len(params.ports)
-		for _, n := range params.ports {
+	case Selection:
+		portLen = len(params.Ports)
+		for _, n := range params.Ports {
 			num, err := strconv.Atoi(n)
 			if err != nil {
 				return nil, 0, fmt.Errorf("invalid integer assigned to port: %w", err)
 			}
 			p = append(p, num)
 		}
-	case series:
-		splitPorts := strings.Split(params.ports[0], "-")
+	case Series:
+		splitPorts := strings.Split(params.Ports[0], "-")
 		numLow, err := strconv.Atoi(splitPorts[0])
 		if err != nil {
 			return nil, 0, fmt.Errorf("invalid integer assigned to port: %w", err)

@@ -1,4 +1,5 @@
-package main
+// Package tcpscanner provides the code for the TCP port scanning functions of go-scan
+package tcpscanner
 
 import (
 	"errors"
@@ -28,7 +29,7 @@ type PortScanResults struct {
 	ErrorInfo error
 }
 
-func scan(taskQueue chan PortScanTask, resultQueue chan PortScanResults) {
+func Scan(taskQueue chan PortScanTask, resultQueue chan PortScanResults) {
 	for {
 		task, ok := <-taskQueue
 		if !ok {

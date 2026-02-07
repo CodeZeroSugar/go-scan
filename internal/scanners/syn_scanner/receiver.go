@@ -1,4 +1,4 @@
-package main
+package synscanner
 
 import (
 	"encoding/binary"
