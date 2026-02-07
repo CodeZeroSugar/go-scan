@@ -1,1 +1,1 @@
-go-scan
+./internal/scanners/syn_scanner

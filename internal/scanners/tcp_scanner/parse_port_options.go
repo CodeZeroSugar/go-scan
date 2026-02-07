@@ -7,10 +7,11 @@ import (
 )
 
 type Params struct {
-	Target   string
-	Ports    []string
-	PortMode PortMode
-	Stats    bool
+	Target    string
+	Ports     []string
+	PortMode  PortMode
+	Discovery bool
+	Stats     bool
 }
 
 type PortMode int
