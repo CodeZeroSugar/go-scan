@@ -5,16 +5,24 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 )
 
 func Ping(ipAddr net.IP) (bool, error) {
+	const timeout = 2 * time.Second
 	c, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
 		return false, fmt.Errorf("failed to establish icmp packet connection: %w", err)
 	}
+
+	err = c.SetReadDeadline(time.Now().Add(timeout))
+	if err != nil {
+		return false, fmt.Errorf("failed to set timeout: %w", err)
+	}
+
 	defer c.Close()
 
 	wm := icmp.Message{
@@ -34,7 +42,7 @@ func Ping(ipAddr net.IP) (bool, error) {
 	}
 
 	rb := make([]byte, 1500)
-	n, peer, err := c.ReadFrom(rb)
+	n, _, err := c.ReadFrom(rb)
 	if err != nil {
 		return false, fmt.Errorf("failed to read bytes returned from icmp: %w", err)
 	}
@@ -44,9 +52,8 @@ func Ping(ipAddr net.IP) (bool, error) {
 	}
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply:
-		fmt.Printf("got reflection from %v", peer)
+		return true, nil
 	default:
 		return false, fmt.Errorf("got %+v; want echo reply", rm)
 	}
-	return true, nil
 }

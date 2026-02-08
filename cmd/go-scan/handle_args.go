@@ -26,6 +26,7 @@ func handleFlags() tcpscanner.Params {
 	flag.Parse()
 	params.Target = targetVar
 	params.Stats = statsVar
+	params.Discovery = snVar
 
 	if strings.Contains(portsVar, ",") {
 		params.PortMode = tcpscanner.Selection

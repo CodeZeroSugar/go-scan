@@ -52,7 +52,6 @@ func UpdateStats(ports []int, statPath string) error {
 	for _, p := range ports {
 		ps, exists := stats.Ports[p]
 		if exists {
-			fmt.Println("incrementing: ", p)
 			ps.Count++
 			stats.Ports[p] = ps
 		} else {
