@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"strings"
+	"time"
 )
 
 //go:generate stringer -type=PortState
@@ -24,6 +25,7 @@ type PortScanTask struct {
 }
 
 type PortScanResults struct {
+	TargetIP  net.IP
 	Port      int
 	State     PortState
 	ErrorInfo error
@@ -45,7 +47,11 @@ func Scan(taskQueue chan PortScanTask, resultQueue chan PortScanResults) {
 		var netErr net.Error
 		var resultErr error
 
-		conn, err := net.DialTCP("tcp", nil, &tcpAddrDst)
+		d := net.Dialer{
+			Timeout: 1 * time.Second,
+		}
+
+		conn, err := d.Dial("tcp", tcpAddrDst.String())
 		if err == nil {
 			state = Open
 			resultErr = nil
@@ -64,6 +70,7 @@ func Scan(taskQueue chan PortScanTask, resultQueue chan PortScanResults) {
 		}
 
 		results := PortScanResults{
+			TargetIP:  task.TargetIP,
 			Port:      tcpAddrDst.Port,
 			State:     state,
 			ErrorInfo: resultErr,

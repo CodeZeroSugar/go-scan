@@ -65,7 +65,7 @@ func main() {
 	taskQueue := make(chan tcpscanner.PortScanTask)
 	taskResults := make(chan tcpscanner.PortScanResults, portLen)
 
-	for range Workers {
+	for i := 0; i < Workers; i++ {
 		go tcpscanner.Scan(taskQueue, taskResults)
 	}
 
@@ -74,55 +74,60 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	fmt.Printf("Scanning %d ports...\n", portLen)
+	totalTasks := 0
+	for range hostsUp {
+		totalTasks += portLen
+	}
 
-	for _, ip := range hostsUp {
-
-		if params.PortMode == tcpscanner.Series {
-			for i := p[0]; i < p[1]; i++ {
-				task := tcpscanner.PortScanTask{
-					TargetIP: ip.To4(),
-					Port:     i,
+	go func() {
+		for _, ip := range hostsUp {
+			if params.PortMode == tcpscanner.Series {
+				for port := p[0]; port < p[1]; port++ {
+					taskQueue <- tcpscanner.PortScanTask{
+						TargetIP: ip.To4(),
+						Port:     port,
+					}
 				}
-				taskQueue <- task
-			}
-		} else {
-			for _, i := range p {
-				task := tcpscanner.PortScanTask{
-					TargetIP: ip.To4(),
-					Port:     i,
+			} else {
+				for _, port := range p {
+					taskQueue <- tcpscanner.PortScanTask{
+						TargetIP: ip.To4(),
+						Port:     port,
+					}
 				}
-				taskQueue <- task
 			}
 		}
-
 		close(taskQueue)
+	}()
 
-		var aggregatedResults []tcpscanner.PortScanResults
-		var openPorts []int
+	resultsByHost := make(map[string][]tcpscanner.PortScanResults)
+	openPortsByHost := make(map[string][]int)
 
-		for range portLen {
-			result := <-taskResults
-			if result.State == tcpscanner.Open {
-				aggregatedResults = append(aggregatedResults, result)
-				openPorts = append(openPorts, result.Port)
-			}
+	for i := 0; i < totalTasks; i++ {
+		res := <-taskResults
+		host := res.TargetIP.String()
+
+		if res.State == tcpscanner.Open {
+			resultsByHost[host] = append(resultsByHost[host], res)
+			openPortsByHost[host] = append(openPortsByHost[host], res.Port)
 		}
+	}
 
-		if err = stats.UpdateStats(openPorts, statPath); err != nil {
-			log.Printf("failed to update stats file: %s", err)
-		}
-
-		sort.Slice(aggregatedResults, func(i, j int) bool {
-			return aggregatedResults[i].Port < aggregatedResults[j].Port
+	for host, results := range resultsByHost {
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].Port < results[j].Port
 		})
 
-		fmt.Printf("Scan Results for: %v\n", ip)
-		for _, res := range aggregatedResults {
-			fmt.Printf("Port: %-5d | State: %v\n", res.Port, res.State.String())
+		fmt.Printf("Scan Results for: %s\n", host)
+		for _, res := range results {
+			fmt.Printf("Port: %5d | State: %v\n", res.Port, res.State.String())
 		}
 
+		if err := stats.UpdateStats(openPortsByHost[host], statPath); err != nil {
+			log.Printf("failed to update stats file: %s", err)
+		}
 	}
+
 	d := time.Since(now)
-	fmt.Printf("GoScan done: %d ports scanned in %.2f seconds\n", portLen, d.Seconds())
+	fmt.Printf("GoScan done: %d host(s) scanned in %.2f seconds\n", len(resultsByHost), d.Seconds())
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func Ping(ipAddr net.IP) (bool, error) {
-	const timeout = 2 * time.Second
+	const timeout = 1 * time.Second
 	c, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
 		return false, fmt.Errorf("failed to establish icmp packet connection: %w", err)
