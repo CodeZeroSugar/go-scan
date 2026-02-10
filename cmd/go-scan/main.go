@@ -22,7 +22,7 @@ const (
 func main() {
 	now := time.Now()
 	formattedTime := now.Format("2006-01-02 15:04:05")
-	fmt.Printf("Starting GoScan %s ( %s ) at %s\n", Version, URL, formattedTime)
+	fmt.Printf("Starting GoScan %s ( %s ) at %s\n\n", Version, URL, formattedTime)
 
 	statPath, err := paths.StatsPath()
 	if err != nil {
@@ -74,6 +74,11 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
+	var hosts []string
+	for _, h := range hostsUp {
+		hosts = append(hosts, h.String())
+	}
+
 	totalTasks := 0
 	for range hostsUp {
 		totalTasks += portLen
@@ -113,17 +118,29 @@ func main() {
 		}
 	}
 
-	for host, results := range resultsByHost {
+	sortHosts(hosts)
+
+	for _, h := range hosts {
+		results := resultsByHost[h]
 		sort.Slice(results, func(i, j int) bool {
 			return results[i].Port < results[j].Port
 		})
 
-		fmt.Printf("Scan Results for: %s\n", host)
-		for _, res := range results {
-			fmt.Printf("Port: %5d | State: %v\n", res.Port, res.State.String())
+		fmt.Printf("Scan Results for: %s\n", h)
+		if len(results) == 0 {
+			fmt.Println("")
+			continue
 		}
 
-		if err := stats.UpdateStats(openPortsByHost[host], statPath); err != nil {
+		for i, res := range results {
+			fmt.Printf("Port: %5d | State: %v\n", res.Port, res.State.String())
+
+			if i == len(results)-1 {
+				fmt.Println("")
+			}
+		}
+
+		if err := stats.UpdateStats(openPortsByHost[h], statPath); err != nil {
 			log.Printf("failed to update stats file: %s", err)
 		}
 	}
