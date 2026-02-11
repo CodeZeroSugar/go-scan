@@ -12,6 +12,7 @@ type Params struct {
 	PortMode  PortMode
 	Discovery bool
 	Stats     bool
+	Filtered  bool
 }
 
 type PortMode int

@@ -2,9 +2,7 @@
 package tcpscanner
 
 import (
-	"errors"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -43,30 +41,15 @@ func Scan(taskQueue chan PortScanTask, resultQueue chan PortScanResults) {
 			Port: task.Port,
 		}
 
-		var state PortState
-		var netErr net.Error
-		var resultErr error
-
 		d := net.Dialer{
-			Timeout: 1 * time.Second,
+			Timeout: 2 * time.Second,
 		}
 
 		conn, err := d.Dial("tcp", tcpAddrDst.String())
-		if err == nil {
-			state = Open
-			resultErr = nil
+
+		state, resultErr := filterConnState(err)
+		if conn != nil {
 			conn.Close()
-		} else {
-			if errors.As(err, &netErr) && netErr.Timeout() {
-				state = Filtered
-				resultErr = netErr
-			} else if strings.Contains(err.Error(), "unreachable") {
-				state = Unreachable
-				resultErr = err
-			} else {
-				state = Closed
-				resultErr = err
-			}
 		}
 
 		results := PortScanResults{
