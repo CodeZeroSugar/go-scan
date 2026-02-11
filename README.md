@@ -92,7 +92,7 @@ Flags:
         Show this help message
 ```
 
-###### Examples
+# Examples
 **Scan top 1000 ports on a test host:**
 ```bash
 go-scan -t 45.33.32.156 -p 1-1000
@@ -106,7 +106,7 @@ go-scan -t 192.168.1.1 -p 22,80,443,3389
 go-scan -t 192.168.0.0/24
 ```
 
-####### Why This Project?
+# Why This Project?
 This was created as a learning exercise to deeply understand:
 
 - Go's concurrency patterns (goroutines, WaitGroups, channels)
@@ -114,12 +114,12 @@ This was created as a learning exercise to deeply understand:
 - Building production-ready CLI tools with proper flags & output
 - Basic network security concepts (ports, states, timeouts)
 
-######## Future Improvements (Roadmap)
+#Future Improvements (Roadmap)
 - SYN scanning mode (raw sockets)
 - Banner grabbing for service/version detection
 - More configuration options (timeout, workers, etc)
 - Domain name resolution
 
-######### License
+# License
 This project is licensed under the MIT License — see the LICENSE file for details.
 
