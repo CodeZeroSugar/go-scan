@@ -18,15 +18,18 @@ func handleFlags() tcpscanner.Params {
 	var portsVar string
 	var snVar bool
 	var statsVar bool
+	var filteredVar bool
 	flag.StringVar(&targetVar, "t", "127.0.0.1", "The IP Address you want to scan. Defaults to loopback.")
 	flag.StringVar(&portsVar, "p", "1-1023", "Input a single port to scan only that port.\nSeparate ports with commas (no spaces) to scan those specific ports (22,54,80).\nProvide a range like '1-500' to scan all ports in that range.\nDefault is common ports.")
 	flag.BoolVar(&snVar, "sn", false, "Toggle for discovery scan only.\nStandard scan uses discovery by default.\nUsing this flag will disable port scanning and only ping hosts specified by -t flag.")
 	flag.BoolVar(&statsVar, "stats", false, "Display port stats. Cannot be used with other flags.\nOptions: top <n>, all\n")
+	flag.BoolVar(&filteredVar, "f", false, "Display filtered ports. Only open ports are displayed by default.")
 
 	flag.Parse()
 	params.Target = targetVar
 	params.Stats = statsVar
 	params.Discovery = snVar
+	params.Filtered = filteredVar
 
 	if strings.Contains(portsVar, ",") {
 		params.PortMode = tcpscanner.Selection

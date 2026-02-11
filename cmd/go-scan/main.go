@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	Version = "1.0.0-alpha"
+	Version = "1.0.0"
 	URL     = "https://github.com/CodeZeroSugar/go-scan"
 	Workers = 100
 )
@@ -112,14 +112,13 @@ func main() {
 		res := <-taskResults
 		host := res.TargetIP.String()
 
-		if res.State == tcpscanner.Open {
+		if res.State == tcpscanner.Open || (res.State == tcpscanner.Filtered && params.Filtered) {
 			resultsByHost[host] = append(resultsByHost[host], res)
 			openPortsByHost[host] = append(openPortsByHost[host], res.Port)
 		}
 	}
 
 	sortHosts(hosts)
-
 	for _, h := range hosts {
 		results := resultsByHost[h]
 		sort.Slice(results, func(i, j int) bool {
@@ -128,7 +127,7 @@ func main() {
 
 		fmt.Printf("Scan Results for: %s\n", h)
 		if len(results) == 0 {
-			fmt.Println("")
+			fmt.Printf("- No accessible ports detected\n\n")
 			continue
 		}
 
