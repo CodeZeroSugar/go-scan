@@ -19,7 +19,7 @@ model (goroutines + channels), networking primitives, and clean CLI application 
 ## Demo
 
 Example output:
-
+```bash
 ./go-scan -t 45.33.32.156
 Starting GoScan 1.0.0 ( https://github.com/CodeZeroSugar/go-scan ) at 2026-02-10 23:34:54
 
@@ -28,7 +28,7 @@ Port:    22 | State: Open
 Port:    80 | State: Open
 
 GoScan done: 1 host(s) scanned in 2.56 seconds
-
+```
 
 ## Installation
 
