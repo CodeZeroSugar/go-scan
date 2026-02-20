@@ -9,7 +9,7 @@ model (goroutines + channels), networking primitives, and clean CLI application 
 **Note**: This is **not** intended for malicious use or unauthorized scanning. Always obtain explicit permission before scanning any network/host you do **not** own.
 
 ## Motivation
-Why would you consider using go-scan when products like nmap already exist with a full suite of options and configuration options? I wanted to make a lightweight scanner that will get the job done when all you need is to find what hosts are up, and what ports are open.
+Why would you consider using go-scan when products like nmap already exist with a full suite of options and configuration options? I know the first time entered `nmap --help` into the terminal, I didn't know where to start. I wanted to make a lightweight scanner that will get the job done when all you need is to find what hosts are up, and what ports are open.
 
 ## Features
 
