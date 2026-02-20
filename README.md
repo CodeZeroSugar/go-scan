@@ -33,7 +33,7 @@ Port:    80 | State: Open
 GoScan done: 1 host(s) scanned in 2.56 seconds
 ```
 
-## Installation
+## Quickstart
 
 ### Prerequisites
 go 1.25.5
