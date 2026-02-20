@@ -123,6 +123,24 @@ This was created as a learning exercise to deeply understand:
 - More configuration options (timeout, workers, etc)
 - Domain name resolution
 
+## Contributing
+### Clone the repo
+
+```bash
+git clone https://github.com/CodeZeroSugar/go-scan
+cd go-scan
+```
+
+### Build the compiled binary
+
+```bash
+go build
+```
+
+### Submit a pull request
+
+If you'd like to contribute, please fork the repository and open a pull request to the `main` branch.
+
 ## License
 This project is licensed under the MIT License — see the LICENSE file for details.
 
